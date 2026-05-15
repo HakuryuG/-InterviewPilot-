@@ -286,18 +286,18 @@ THEME_RULES = [
 ]
 
 THEME_KEYWORD_BANK = {
-    "数字医疗服务": ["线上挂号", "流程复杂", "提示不清", "线下兜底", "适老化"],
-    "政务数字化服务": ["线上办理", "失败成本", "提示不清", "线下兜底", "重复劳动"],
-    "数字平台经营": ["规则变动", "现金流压力", "流程复杂", "人工客服", "纠错成本"],
-    "教育数字平台": ["系统分散", "信息不透明", "提交失败", "隐私风险", "时间压力"],
-    "反诈与数字安全": ["反诈风险", "高压话术", "风险提醒", "链接甄别", "协同治理"],
-    "日常数字生活": ["数字服务", "使用门槛", "流程复杂", "提示不清", "线下兜底"],
+    "数字医疗服务": ["线上挂号", "医院系统", "预约失败", "界面复杂"],
+    "政务数字化服务": ["网上办事", "材料提交", "审核进度", "系统卡顿"],
+    "数字平台经营": ["平台规则", "资金周转", "申诉困难", "账号限制"],
+    "教育数字平台": ["课程平台", "作业提交", "账号登录", "信息查询"],
+    "反诈与数字安全": ["诈骗风险", "账户安全", "陌生链接", "验证码"],
+    "日常数字生活": ["手机操作", "界面导航", "密码记忆", "功能查找"],
 }
 
 GLOBAL_KEYWORD_CANDIDATES = [
-    "线上办理", "流程复杂", "提示不清", "失败成本", "数字鸿沟", "适老化", "反诈风险",
-    "系统可用性", "线下兜底", "服务可达性", "规则变动", "隐私风险", "人工辅导", "重复劳动",
-    "治理协同", "办成率", "异常处理", "跨平台不一致", "高峰期卡顿", "验证码门槛",
+    "线上办理", "流程复杂", "提示不清", "操作失败", "数字鸿沟", "适老化", "系统卡顿",
+    "系统可用性", "线下窗口", "服务可达性", "材料要求", "隐私风险", "人工客服", "重复劳动",
+    "审核进度", "账号密码", "界面导航", "加载缓慢", "信息填写", "操作困难",
 ]
 
 
@@ -478,7 +478,7 @@ def analyze_interview_rule_based(text: str) -> dict:
         {
             "段落文本": preview,
             "受访者类型": respondent_type,
-            "年龄段": "未知",
+            "年龄段": features["年龄段"],
             "核心主题": final_theme,
             "情绪": final_emotion,
             "关键词": "、".join(core_keywords),
@@ -501,15 +501,44 @@ def analyze_interview_rule_based(text: str) -> dict:
 
 def extract_local_features(raw: str) -> dict:
     respondent_type = "普通用户"
-    if any(w in raw for w in ["网格员", "窗口", "工作人员", "信息科", "民警", "护士", "老师"]):
+    # 基层工作人员识别
+    if any(w in raw for w in ["网格员", "网格", "窗口", "工作人员", "信息科", "民警", "护士", "老师", "医生", "保安", "物业", "保洁", "居委"]):
         respondent_type = "基层工作人员"
-    elif any(w in raw for w in ["学生", "大三", "大学"]):
+    elif any(w in raw for w in ["学生", "大三", "大四", "大二", "大一", "大学", "研究生", "博士", "硕士", "本科生", "高中生", "初中生", "小学生"]):
         respondent_type = "青年/学生群体"
-    elif any(w in raw for w in ["退休", "老人", "老年"]):
+    elif any(w in raw for w in ["退休", "老人", "老年", "大爷", "大妈", "爷爷", "奶奶", "外婆", "外公"]):
         respondent_type = "老年群体"
+    elif any(w in raw for w in ["宝妈", "宝爸", "妈妈", "爸爸", "家长", "带孩子", "孩子"]):
+        respondent_type = "家长群体"
+    elif any(w in raw for w in ["残障", "残疾", "盲人", "聋人", "轮椅", "行动不便"]):
+        respondent_type = "特殊群体"
+    elif any(w in raw for w in ["外来务工", "农民工", "流动人口", "租房", "租客"]):
+        respondent_type = "流动人口"
 
+    # 年龄识别 - 精确匹配
     age_match = re.search(r"(\d{1,3})\s*岁", raw)
-    age_group = f"{age_match.group(1)}岁" if age_match else "未知"
+    if age_match:
+        age_num = int(age_match.group(1))
+        if age_num < 18:
+            age_group = f"{age_num}岁（未成年）"
+        elif age_num <= 25:
+            age_group = f"{age_num}岁（青年）"
+        elif age_num <= 40:
+            age_group = f"{age_num}岁（中年）"
+        elif age_num <= 60:
+            age_group = f"{age_num}岁（中老年）"
+        else:
+            age_group = f"{age_num}岁（高龄）"
+    else:
+        # 尝试根据上下文推断年龄段
+        if any(w in raw for w in ["未成年", "小孩", "儿童", "学生", "高考", "中考"]):
+            age_group = "未成年"
+        elif any(w in raw for w in ["年轻", "青年", "刚退休", "三十", "四十", "五十"]):
+            age_group = "成年"
+        elif any(w in raw for w in ["六十", "七十", "八十", "老年", "退休", "老人"]):
+            age_group = "老年"
+        else:
+            age_group = "未知"
 
     final_theme = "日常数字生活"
     for theme, words in THEME_RULES:
@@ -667,7 +696,7 @@ def analyze_interview_ai(text: str) -> dict:
 
 要求：
 1. 只生成三个字段：访谈摘要（40-70字）、情绪词（1-2个词）和关键要点（1-2条）。
-2. 不要改写事实，不要编造年龄、身份。
+2. 不要改写事实，不要编造年龄、身份。如果文本中没有提到年龄，请将年龄设为"未知"或留空。
 3. 输出格式：
 {{
   "访谈摘要": "",
