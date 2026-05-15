@@ -278,26 +278,27 @@ USAGE_DB_PATH = "interviewpilot_usage.db"
 DAILY_ANALYZE_LIMIT = 100
 
 THEME_RULES = [
-    ("数字医疗服务", ["医院", "挂号", "复诊", "医保", "就诊", "门诊", "缴费"]),
-    ("政务数字化服务", ["政务", "社保", "认证", "窗口", "线上办理", "材料", "办成率"]),
-    ("数字平台经营", ["小超市", "进货", "缴税", "发票", "平台规则", "账期", "结算"]),
-    ("教育数字平台", ["选课", "助学金", "论文", "校园网", "实习", "奖学金"]),
-    ("反诈与数字安全", ["反诈", "诈骗", "冻结账户", "风险", "短信", "链接", "支付节点"]),
+    ("数字医疗服务", ["医院", "挂号", "复诊", "医保", "就诊", "门诊", "缴费", "大夫", "挂号费"]),
+    ("政务数字化服务", ["政务", "社保", "认证", "窗口", "网上办理", "材料", "办成率", "年审", "补审"]),
+    ("数字平台经营", ["小超市", "进货", "平台卖货", "缴税", "发票", "平台规则", "账期", "结算", "保证金", "提现"]),
+    ("教育数字平台", ["选课", "助学金", "论文", "校园网", "实习", "奖学金", "大一新生", "报到", "贫困证明"]),
+    ("反诈与数字安全", ["反诈", "诈骗", "冻结账户", "风险", "短信", "链接", "支付节点", "验证码", "钓鱼"]),
 ]
 
 THEME_KEYWORD_BANK = {
-    "数字医疗服务": ["线上挂号", "医院系统", "预约失败", "界面复杂"],
-    "政务数字化服务": ["网上办事", "材料提交", "审核进度", "系统卡顿"],
-    "数字平台经营": ["平台规则", "资金周转", "申诉困难", "账号限制"],
-    "教育数字平台": ["课程平台", "作业提交", "账号登录", "信息查询"],
-    "反诈与数字安全": ["诈骗风险", "账户安全", "陌生链接", "验证码"],
-    "日常数字生活": ["手机操作", "界面导航", "密码记忆", "功能查找"],
+    "数字医疗服务": ["线上挂号", "医院系统", "预约失败", "界面复杂", "人工窗口"],
+    "政务数字化服务": ["网上办理", "材料上传", "审核进度", "系统卡顿", "账号密码"],
+    "数字平台经营": ["平台规则", "资金周转", "申诉困难", "保证金", "提现账期"],
+    "教育数字平台": ["选课系统", "助学金", "材料上传", "网络中断", "无障碍支持"],
+    "反诈与数字安全": ["诈骗短信", "钓鱼链接", "账户冻结", "银行卡", "验证码"],
+    "日常数字生活": ["智能手机", "网上办事", "人工窗口", "老年人", "数字鸿沟"],
 }
 
 GLOBAL_KEYWORD_CANDIDATES = [
-    "线上办理", "流程复杂", "提示不清", "操作失败", "数字鸿沟", "适老化", "系统卡顿",
-    "系统可用性", "线下窗口", "服务可达性", "材料要求", "隐私风险", "人工客服", "重复劳动",
-    "审核进度", "账号密码", "界面导航", "加载缓慢", "信息填写", "操作困难",
+    "线上办理", "系统卡顿", "材料上传", "账号密码", "网上预约", "人工窗口",
+    "平台规则", "资金周转", "保证金", "提现", "选课系统", "助学金申请",
+    "诈骗短信", "钓鱼链接", "验证码", "智能手机", "数字鸿沟", "无障碍支持",
+    "界面复杂", "网上办理", "审核进度", "操作失败",
 ]
 
 
@@ -440,13 +441,20 @@ st.markdown(
             <span class="tag">定性研究</span>
             <span class="tag">关键词提取</span>
             <span class="tag">报告导出</span>
-            <span class="tag">Version 1.1.0</span>
+            <span class="tag">Version 1.3.0</span>
         </div>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
+
+
+def split_text_into_paragraphs(text: str) -> List[str]:
+    """将长文本按段落分割。识别句号、问号、感叹号加空行作为段落分隔符。"""
+    chunks = re.split(r"(?<=[。！？\?!])\s*\n\s*|\n\s*\n+", text.strip())
+    paragraphs = [p.strip() for p in chunks if p.strip()]
+    return paragraphs if paragraphs else [text.strip()]
 
 
 def analyze_interview_rule_based(text: str) -> dict:
@@ -546,8 +554,8 @@ def extract_local_features(raw: str) -> dict:
             final_theme = theme
             break
 
-    anxiety_words = ["担心", "焦虑", "紧张", "害怕", "失败", "排队", "被骗", "挫败", "拖到", "压力", "麻烦"]
-    positive_words = ["方便", "提升", "省事", "顺畅", "高效", "认可"]
+    anxiety_words = ["担心", "焦虑", "紧张", "害怕", "失败", "排队", "被骗", "挫败", "拖到", "压力", "麻烦", "无奈", "难受", "尴尬", "不满", "气愤", "委屈", "崩溃", "头疼"]
+    positive_words = ["方便", "提升", "省事", "顺畅", "高效", "认可", "感谢", "满意", "感谢", "挺好"]
     if any(w in raw for w in anxiety_words):
         emotion = "焦虑"
     elif any(w in raw for w in positive_words):
@@ -603,6 +611,7 @@ def parse_labeled_fallback(content: str, raw_text: str) -> dict:
         return m.group(1).strip() if m else default
 
     summary = pick("访谈摘要", "该访谈已完成分析。")
+    respondent_self = pick("受访者自述身份", "")
     respondent = pick("受访者类型", "普通用户")
     age = pick("年龄段", "未知")
     theme = pick("核心主题", "日常数字生活")
@@ -618,6 +627,7 @@ def parse_labeled_fallback(content: str, raw_text: str) -> dict:
 
     return {
         "访谈摘要": summary,
+        "受访者自述身份": respondent_self,
         "受访者类型": respondent,
         "年龄段": age,
         "核心主题": theme,
@@ -628,6 +638,7 @@ def parse_labeled_fallback(content: str, raw_text: str) -> dict:
         "分段分析": [
             {
                 "段落文本": preview_text,
+                "受访者自述身份": respondent_self,
                 "受访者类型": respondent,
                 "年龄段": age,
                 "核心主题": theme,
@@ -689,47 +700,62 @@ def analyze_interview_ai(text: str) -> dict:
     if client is None:
         raise RuntimeError("DEEPSEEK_API_KEY 未配置")
 
-    base = extract_local_features(text)
     ai_text = compress_text_for_ai(text)
     prompt = f"""
-你是一名轻量访谈整理助手。请阅读下面的中文访谈文本，仅输出 JSON。
-
-要求：
-1. 只生成三个字段：访谈摘要（40-70字）、情绪词（1-2个词）和关键要点（1-2条）。
-2. 不要改写事实，不要编造年龄、身份。如果文本中没有提到年龄，请将年龄设为"未知"或留空。
-3. 输出格式：
-{{
-  "访谈摘要": "",
-  "情绪词": "",
-  "关键要点": ["", ""]
-}}
+你是一名中文访谈分析助手。请仔细阅读下面的访谈文本，提取关键信息并输出JSON。
 
 访谈文本：
 {ai_text}
+
+要求：
+1. 根据文本内容，准确识别以下字段：
+   - "受访者自述身份"：直接提取受访者在文本中明确说出的身份，只保留身份本身（如"社区网格员"、"大三学生"、"小超市老板"、"视障人士"、"外卖骑手"），不要"我是"、"我是一名"等前缀，不要推测或改写
+   - "受访者类型"：根据文本描述判断分类（普通用户/基层工作人员/青年/学生群体/老年群体/特殊群体等）
+   - "年龄段"：如果文本明确提到年龄（如"我今年68岁"或"49岁"），直接输出具体数字（如"68岁"或"49岁"）；如果文本提到年龄段范围（如"40-49岁"），也直接输出；否则设为"未知"
+   - "核心主题"：从以下主题中选择最符合的（数字医疗服务/政务数字化服务/教育数字平台/反诈与数字安全/数字平台经营/日常数字生活）
+   - "情绪"：根据文本整体情感判断（焦虑/中性/积极/无奈/不满等）
+   - "关键词"：提取3-5个核心关键词，反映访谈主要内容
+   - "访谈摘要"：用40-70字概括访谈主要内容
+   - "关键要点"：提取1-2条关键洞察
+
+2. 不要编造信息，如果文本中未提及某个信息，该字段留空或设为"未知"
+3. 输出格式：
+{{
+  "受访者自述身份": "",
+  "受访者类型": "",
+  "年龄段": "",
+  "核心主题": "",
+  "情绪": "",
+  "关键词": ["", "", ""],
+  "访谈摘要": "",
+  "关键要点": ["", ""]
+}}
+
+请直接输出JSON，不要其他内容：
 """
 
     try:
         response = client.chat.completions.create(
             model="deepseek-chat",
             messages=[
-                {"role": "system", "content": "你是一个高效、节省算力的中文访谈分析助手。"},
+                {"role": "system", "content": "你是一个高效、节省算力的中文访谈分析助手，擅长从访谈文本中提取关键信息。"},
                 {"role": "user", "content": prompt},
             ],
             response_format={"type": "json_object"},
             temperature=0.0,
-            max_tokens=180,
-            timeout=10,
+            max_tokens=350,
+            timeout=15,
         )
         content = response.choices[0].message.content
         data = parse_ai_json_response(content)
     except json.JSONDecodeError:
         retry_prompt = f"""
-请基于以下访谈文本输出合法 JSON。只输出 JSON。
-字段：
-访谈摘要, 情绪词, 关键要点(1-2个数组)
+请基于以下访谈文本输出合法JSON，只包含字段：受访者自述身份、受访者类型、年龄段、核心主题、情绪、关键词(数组)、访谈摘要、关键要点(数组)。
 
 访谈文本：
 {ai_text}
+
+直接输出JSON：
 """
         retry_resp = client.chat.completions.create(
             model="deepseek-chat",
@@ -739,17 +765,21 @@ def analyze_interview_ai(text: str) -> dict:
             ],
             response_format={"type": "json_object"},
             temperature=0.0,
-            max_tokens=180,
-            timeout=8,
+            max_tokens=350,
+            timeout=12,
         )
         retry_content = retry_resp.choices[0].message.content
         try:
             data = parse_ai_json_response(retry_content)
         except json.JSONDecodeError:
             text_retry_prompt = f"""
-请仅按以下固定字段输出，不要 JSON，不要 Markdown：
+请仅按以下固定字段输出，不要JSON，不要Markdown：
+受访者类型：...
+年龄段：...
+核心主题：...
+情绪：...
+关键词：关键词1、关键词2、关键词3
 访谈摘要：...
-情绪词：...
 关键要点：要点1；要点2
 
 访谈文本：
@@ -762,42 +792,55 @@ def analyze_interview_ai(text: str) -> dict:
                     {"role": "user", "content": text_retry_prompt},
                 ],
                 temperature=0.0,
-                max_tokens=170,
-                timeout=8,
+                max_tokens=300,
+                timeout=10,
             )
             data = parse_labeled_fallback(text_retry.choices[0].message.content, text)
 
+    # 解析AI返回的关键词
+    keywords = data.get("关键词", [])
+    if isinstance(keywords, str):
+        keywords = [k.strip() for k in re.split(r"[、,，;；/|]", keywords) if k.strip()]
+    keywords = [str(k).strip() for k in keywords if str(k).strip()][:5]
+
+    # 解析关键要点
     key_points = data.get("关键要点", [])
     if isinstance(key_points, str):
         key_points = [s.strip() for s in re.split(r"[\n;；]", key_points) if s.strip()]
-    key_points = [str(s).strip() for s in key_points if str(s).strip()]
-    key_points = key_points[:2]
-    emotion_phrase = normalize_emotion_phrase(data.get("情绪词", ""), base["情绪"])
+    key_points = [str(s).strip() for s in key_points if str(s).strip()][:2]
 
     preview_text = text.strip().replace("\n", " ")
     if len(preview_text) > 160:
         preview_text = preview_text[:160] + "..."
-    normalized_paragraphs = [
-        {
-            "段落文本": preview_text,
-            "受访者类型": base["受访者类型"],
-            "年龄段": base["年龄段"],
-            "核心主题": base["核心主题"],
-            "情绪": base["情绪"],
-            "关键词": "、".join(base["关键词列表"][:3]),
-        }
-    ]
+
+    # 按段落分割并分析
+    paragraphs = split_text_into_paragraphs(text)
+    normalized_paragraphs = []
+    for i, para in enumerate(paragraphs):
+        para_preview = para.replace("\n", " ")
+        if len(para_preview) > 160:
+            para_preview = para_preview[:160] + "..."
+        normalized_paragraphs.append({
+            "段落文本": para_preview,
+            "受访者自述身份": data.get("受访者自述身份", ""),
+            "受访者类型": data.get("受访者类型", "普通用户"),
+            "年龄段": data.get("年龄段", "未知"),
+            "核心主题": data.get("核心主题", "日常数字生活"),
+            "情绪": data.get("情绪", "中性"),
+            "关键词": "、".join(keywords[:3]),
+        })
 
     return {
-        "访谈摘要": data.get("访谈摘要", f"围绕“{base['核心主题']}”的访谈，主要问题集中在“{'、'.join(base['关键词列表'][:2])}”，整体情绪偏“{base['情绪']}”。"),
-        "受访者类型": base["受访者类型"],
-        "年龄段": base["年龄段"],
-        "核心主题": base["核心主题"],
-        "情绪": emotion_phrase,
-        "关键词": "、".join(base["关键词列表"][:3]),
-        "全部关键词": "、".join(base["关键词列表"][: keyword_limit_by_text(text)]),
+        "访谈摘要": data.get("访谈摘要", "该访谈已完成分析。"),
+        "受访者自述身份": data.get("受访者自述身份", ""),
+        "受访者类型": data.get("受访者类型", "普通用户"),
+        "年龄段": data.get("年龄段", "未知"),
+        "核心主题": data.get("核心主题", "日常数字生活"),
+        "情绪": data.get("情绪", "中性"),
+        "关键词": "、".join(keywords[:3]),
+        "全部关键词": "、".join(keywords),
         "关键要点": "；".join(key_points) if key_points else "",
-        "段落数": len(normalized_paragraphs),
+        "段落数": len(paragraphs),
         "分段分析": normalized_paragraphs,
     }
 
@@ -835,13 +878,14 @@ def split_bulk_interviews(text: str) -> List[str]:
     raw_text = text.strip()
     if not raw_text:
         return []
-
+    # 去除开头的标题行（如"InterviewPilot 展示测试文本｜新版"）
+    raw_text = re.sub(r"^(InterviewPilot\s*展示[^：：]*[：:：]?\s*\n?)", "", raw_text)
     normalized = raw_text.replace("\r\n", "\n").replace("\r", "\n")
     lines = normalized.split("\n")
 
     # Pattern to detect numbered or lettered markers at line start
     marker_pattern = re.compile(
-        r"^\s*(?:访谈\s*[0-9一二三四五六七八九十]+|"
+        r"^\s*(?:访谈\s*[0-9一二三四五六七八九十]+[：:：]?\s*|"
         r"[0-9]+[、.．)]|"
         r"[一二三四五六七八九十]+[、.]|"
         r"（[一二三四五六七八九十0-9]+）|"
@@ -914,35 +958,37 @@ def build_wordcloud_html(keyword_counts: dict, max_words: int = 40) -> str:
 
 def build_excel_bytes(df: pd.DataFrame) -> bytes:
     """将结果导出为 Excel 二进制内容。"""
-    export_df = df[[
+    base_cols = [
         "访谈ID",
         "访谈摘要",
-        "受访者类型",
-        "年龄段",
         "核心主题",
         "情绪",
         "关键词",
-        "全部关键词",
         "关键要点",
         "段落数",
         "原始文本",
-    ]].copy()
+    ]
+    extra_cols = ["受访者自述身份", "受访者类型", "年龄段", "全部关键词"]
+    for col in extra_cols:
+        if col in df.columns:
+            base_cols.append(col)
+    export_df = df[[c for c in base_cols if c in df.columns]].copy()
 
     detail_rows = []
     for _, row in df.iterrows():
         for idx, item in enumerate(row["分段分析"], start=1):
-            detail_rows.append(
-                {
-                    "访谈ID": row["访谈ID"],
-                    "段落序号": idx,
-                    "受访者类型": item["受访者类型"],
-                    "年龄段": item["年龄段"],
-                    "核心主题": item["核心主题"],
-                    "情绪": item["情绪"],
-                    "关键词": item["关键词"],
-                    "段落内容": item["段落文本"],
-                }
-            )
+            detail_item = {
+                "访谈ID": row["访谈ID"],
+                "段落序号": idx,
+                "核心主题": item.get("核心主题", ""),
+                "情绪": item.get("情绪", ""),
+                "关键词": item.get("关键词", ""),
+                "段落内容": item.get("段落文本", ""),
+            }
+            for col in ["受访者自述身份", "受访者类型", "年龄段"]:
+                if col in item:
+                    detail_item[col] = item[col]
+            detail_rows.append(detail_item)
     detail_df = pd.DataFrame(detail_rows)
 
     output = io.BytesIO()
@@ -1415,6 +1461,7 @@ if analyze_clicked:
                             "访谈ID": f"INT{idx:03d}",
                             "原始文本": interview_text,
                             "访谈摘要": result["访谈摘要"],
+                            "受访者自述身份": result.get("受访者自述身份", ""),
                             "受访者类型": result["受访者类型"],
                             "年龄段": result["年龄段"],
                             "核心主题": result["核心主题"],
@@ -1452,6 +1499,8 @@ st.caption(
 if st.session_state.pending_texts:
     def two_line_preview(text: str, line_len: int = 46) -> str:
         t = str(text).replace("\n", " ").strip()
+        # 去除开头的标记词（包括标题）、冒号和空格
+        t = re.sub(r"^(InterviewPilot\s*展示[^：：]*[：:：]?\s*|[^(]*访谈\s*[0-9一二三四五六七八九十]+[：:：]\s*[^\n]*\n?\s*)", "", t)
         if len(t) <= line_len:
             return t
         if len(t) <= line_len * 2:
@@ -1490,17 +1539,31 @@ if st.session_state.records:
         st.session_state.cached_theme_brief = ""
 
     st.write("### 📋 访谈整理结果")
-    # Create preview column for all keywords
-    table_df = df[["访谈ID", "段落数", "受访者类型", "年龄段", "核心主题", "情绪", "关键词", "全部关键词", "关键要点"]].copy()
+    # 显示列：优先显示受访者信息，再显示内容
+    display_cols = ["访谈ID", "段落数", "受访者类型"]
+    if "受访者自述身份" in df.columns:
+        display_cols.append("受访者自述身份")
+    display_cols.extend(["年龄段", "核心主题", "情绪", "关键词"])
+    if "全部关键词" in df.columns:
+        display_cols.append("全部关键词")
+    if "关键要点" in df.columns:
+        display_cols.append("关键要点")
+    table_df = df[[c for c in display_cols if c in df.columns]].copy()
     st.dataframe(table_df, use_container_width=True, hide_index=True)
 
     st.write("### 🧾 访谈摘要")
     for _, row in df.iterrows():
-        with st.expander(f"{row['访谈ID']}｜{row['核心主题']}｜{row['受访者类型']}｜{row['段落数']}段"):
+        expander_label = f"{row['访谈ID']}｜{row['核心主题']}｜{row['受访者类型']}｜{row['段落数']}段"
+        if row.get("受访者自述身份"):
+            expander_label += f"｜{row['受访者自述身份']}"
+        with st.expander(expander_label):
             st.write("**摘要：**")
             st.write(row["访谈摘要"])
+            # 去除原始文本开头的标记词
+            orig = row["原始文本"]
+            orig = re.sub(r"^(访谈\s*[0-9一二三四五六七八九十]+[：:：]?\s*|INT[0-9]+\s*[：:：]?\s*|访谈[0-9]+[：:：]?\s*)", "", orig)
             st.write("**原始文本：**")
-            st.write(row["原始文本"])
+            st.write(orig)
             st.write("**关键词：**")
             st.write(row["关键词"])
             if row.get("关键要点"):
@@ -1536,22 +1599,25 @@ if st.session_state.records:
     )
     st.altair_chart(theme_chart, use_container_width=True)
 
-    # Keyword frequency processing (use concise keywords instead of all keywords)
+    # Keyword frequency processing (use all keywords for better visualization)
     keyword_counts: dict = {}
-    for kws in df["关键词"]:
-        for kw in [item.strip() for item in str(kws).split("、") if item.strip()]:
+    for _, row in df.iterrows():
+        # 优先使用全部关键词，否则用关键词
+        kws_text = row.get("全部关键词", row.get("关键词", ""))
+        for kw in [item.strip() for item in str(kws_text).split("、") if item.strip()]:
             keyword_counts[kw] = keyword_counts.get(kw, 0) + 1
 
     keyword_df = pd.DataFrame(list(keyword_counts.items()), columns=["关键词", "数量"])
     if not keyword_df.empty:
+        # 按数量降序排序，显示前20个
         keyword_df = (
             keyword_df.sort_values(["数量", "关键词"], ascending=[False, True])
-            .head(10)
+            .head(20)
             .reset_index(drop=True)
         )
         keyword_df["排序"] = range(len(keyword_df))
 
-    st.write("### 📈 关键词分布")
+    st.write("### 📈 关键词分布（出现次数≥1）")
     if keyword_df.empty:
         st.info("暂无关键词统计结果。")
     else:
@@ -1559,7 +1625,7 @@ if st.session_state.records:
             alt.Chart(keyword_df)
             .mark_bar(size=24)
             .encode(
-                x=alt.X("数量:Q", title="次数", axis=alt.Axis(format="d", tickMinStep=1)),
+                x=alt.X("数量:Q", title="出现次数", axis=alt.Axis(format="d", tickMinStep=1)),
                 y=alt.Y("关键词:N", sort=alt.SortField(field="排序", order="ascending"), title="关键词"),
                 tooltip=["关键词", "数量"],
             )
@@ -1706,7 +1772,7 @@ else:
 st.markdown(
     """
     <div class="footer-note">
-        InterviewPilot ｜ 北京师范大学 ｜ Version 1.1.0 ｜ Created by 政管小白 ｜ 联系方式：yuqingsuen@163.com
+        InterviewPilot ｜ 北京师范大学 ｜ Version 1.3.0 ｜ Created by 政管小白 ｜ 联系方式：yuqingsuen@163.com
     </div>
     """,
     unsafe_allow_html=True,
