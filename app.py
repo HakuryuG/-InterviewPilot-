@@ -440,7 +440,7 @@ st.markdown(
             <span class="tag">定性研究</span>
             <span class="tag">关键词提取</span>
             <span class="tag">报告导出</span>
-            <span class="tag">Version 1.0.0</span>
+            <span class="tag">Version 1.1.0</span>
         </div>
     </div>
     """,
@@ -1706,7 +1706,7 @@ else:
 st.markdown(
     """
     <div class="footer-note">
-        InterviewPilot ｜ 北京师范大学 ｜ Version 1.0.0 ｜ Created by 政管小白 ｜ 联系方式：yuqingsuen@163.com
+        InterviewPilot ｜ 北京师范大学 ｜ Version 1.1.0 ｜ Created by 政管小白 ｜ 联系方式：yuqingsuen@163.com
     </div>
     """,
     unsafe_allow_html=True,
