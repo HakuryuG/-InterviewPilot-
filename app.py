@@ -441,7 +441,7 @@ st.markdown(
             <span class="tag">定性研究</span>
             <span class="tag">关键词提取</span>
             <span class="tag">报告导出</span>
-            <span class="tag">Version 1.3.0</span>
+            <span class="tag">Version 1.4.0</span>
         </div>
     </div>
     """,
@@ -613,11 +613,20 @@ def parse_labeled_fallback(content: str, raw_text: str) -> dict:
     summary = pick("访谈摘要", "该访谈已完成分析。")
     respondent_self = pick("受访者自述身份", "")
     respondent = pick("受访者类型", "普通用户")
-    age = pick("年龄段", "未知")
+    具体年龄 = pick("具体年龄", "")
+    年龄段 = pick("年龄段", "未知")
     theme = pick("核心主题", "日常数字生活")
     emotion = pick("情绪", "中性")
     kw_text = pick("关键词", "")
     kp_text = pick("关键要点", "")
+
+    # 合并具体年龄和年龄段
+    if 具体年龄 and 年龄段 and 年龄段 != "未知":
+        年龄显示 = f"{具体年龄}（{年龄段}）"
+    elif 具体年龄:
+        年龄显示 = 具体年龄
+    else:
+        年龄显示 = 年龄段
 
     keywords = [k.strip() for k in re.split(r"[、,，;；/|]", kw_text) if k.strip()][:5]
     key_points = [k.strip() for k in re.split(r"[；;\n]", kp_text) if k.strip()][:2]
@@ -629,7 +638,7 @@ def parse_labeled_fallback(content: str, raw_text: str) -> dict:
         "访谈摘要": summary,
         "受访者自述身份": respondent_self,
         "受访者类型": respondent,
-        "年龄段": age,
+        "年龄段": 年龄显示,
         "核心主题": theme,
         "情绪": emotion,
         "情绪词": emotion,
@@ -640,7 +649,7 @@ def parse_labeled_fallback(content: str, raw_text: str) -> dict:
                 "段落文本": preview_text,
                 "受访者自述身份": respondent_self,
                 "受访者类型": respondent,
-                "年龄段": age,
+                "年龄段": 年龄显示,
                 "核心主题": theme,
                 "情绪": emotion,
                 "关键词": keywords[:3] if keywords else ["访谈"],
@@ -709,9 +718,10 @@ def analyze_interview_ai(text: str) -> dict:
 
 要求：
 1. 根据文本内容，准确识别以下字段：
-   - "受访者自述身份"：直接提取受访者在文本中明确说出的身份，只保留身份本身（如"社区网格员"、"大三学生"、"小超市老板"、"视障人士"、"外卖骑手"），不要"我是"、"我是一名"等前缀，不要推测或改写
+   - "受访者自述身份"：直接提取受访者在文本中明确说出的身份，只保留身份本身（如"社区网格员"、"大三学生"、"小超市老板"、"视障人士"、"外卖骑手"），不要"我是"、"我是一名"等前缀
    - "受访者类型"：根据文本描述判断分类（普通用户/基层工作人员/青年/学生群体/老年群体/特殊群体等）
-   - "年龄段"：如果文本明确提到年龄（如"我今年68岁"或"49岁"），直接输出具体数字（如"68岁"或"49岁"）；如果文本提到年龄段范围（如"40-49岁"），也直接输出；否则设为"未知"
+   - "具体年龄"：如果文本明确提到年龄（如"我今年68岁"或"49岁"），提取具体数字；否则设为空
+   - "年龄段"：根据具体年龄判断年龄段：18岁以下返回"未成年"，18-25岁返回"青年"，26-40岁返回"中年"，41-60岁返回"中老年"，60岁以上返回"高龄"；如果无法确定具体年龄，则返回"未知"
    - "核心主题"：从以下主题中选择最符合的（数字医疗服务/政务数字化服务/教育数字平台/反诈与数字安全/数字平台经营/日常数字生活）
    - "情绪"：根据文本整体情感判断（焦虑/中性/积极/无奈/不满等）
    - "关键词"：提取3-5个核心关键词，反映访谈主要内容
@@ -723,6 +733,7 @@ def analyze_interview_ai(text: str) -> dict:
 {{
   "受访者自述身份": "",
   "受访者类型": "",
+  "具体年龄": "",
   "年龄段": "",
   "核心主题": "",
   "情绪": "",
@@ -750,7 +761,7 @@ def analyze_interview_ai(text: str) -> dict:
         data = parse_ai_json_response(content)
     except json.JSONDecodeError:
         retry_prompt = f"""
-请基于以下访谈文本输出合法JSON，只包含字段：受访者自述身份、受访者类型、年龄段、核心主题、情绪、关键词(数组)、访谈摘要、关键要点(数组)。
+请基于以下访谈文本输出合法JSON，只包含字段：受访者自述身份、受访者类型、具体年龄、年龄段、核心主题、情绪、关键词(数组)、访谈摘要、关键要点(数组)。
 
 访谈文本：
 {ai_text}
@@ -774,7 +785,9 @@ def analyze_interview_ai(text: str) -> dict:
         except json.JSONDecodeError:
             text_retry_prompt = f"""
 请仅按以下固定字段输出，不要JSON，不要Markdown：
+受访者自述身份：...
 受访者类型：...
+具体年龄：...
 年龄段：...
 核心主题：...
 情绪：...
@@ -824,17 +837,28 @@ def analyze_interview_ai(text: str) -> dict:
             "段落文本": para_preview,
             "受访者自述身份": data.get("受访者自述身份", ""),
             "受访者类型": data.get("受访者类型", "普通用户"),
+            "具体年龄": data.get("具体年龄", ""),
             "年龄段": data.get("年龄段", "未知"),
             "核心主题": data.get("核心主题", "日常数字生活"),
             "情绪": data.get("情绪", "中性"),
             "关键词": "、".join(keywords[:3]),
         })
 
+    # 合并具体年龄和年龄段
+    具体年龄 = data.get("具体年龄", "")
+    年龄段 = data.get("年龄段", "未知")
+    if 具体年龄 and 年龄段 and 年龄段 != "未知":
+        年龄显示 = f"{具体年龄}（{年龄段}）"
+    elif 具体年龄:
+        年龄显示 = 具体年龄
+    else:
+        年龄显示 = 年龄段
+
     return {
         "访谈摘要": data.get("访谈摘要", "该访谈已完成分析。"),
         "受访者自述身份": data.get("受访者自述身份", ""),
         "受访者类型": data.get("受访者类型", "普通用户"),
-        "年龄段": data.get("年龄段", "未知"),
+        "年龄段": 年龄显示,
         "核心主题": data.get("核心主题", "日常数字生活"),
         "情绪": data.get("情绪", "中性"),
         "关键词": "、".join(keywords[:3]),
